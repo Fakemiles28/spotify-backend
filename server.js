@@ -1,23 +1,17 @@
-
-const express = require("express");
+// Move this to: api/now-playing.js
 const axios = require("axios");
-const cors = require("cors");
-require("dotenv").config();
-
-const app = express();
-app.use(cors());
-
-const PORT = process.env.PORT || 3000;
-const client_id = process.env.CLIENT_ID;
-const client_secret = process.env.CLIENT_SECRET;
-const refresh_token = process.env.REFRESH_TOKEN;
 
 let access_token = "";
 
 async function refreshAccessToken() {
+  const refresh_token = process.env.REFRESH_TOKEN;
+  const client_id = process.env.CLIENT_ID;
+  const client_secret = process.env.CLIENT_SECRET;
+
   const params = new URLSearchParams();
   params.append("grant_type", "refresh_token");
   params.append("refresh_token", refresh_token);
+
   const headers = {
     "Content-Type": "application/x-www-form-urlencoded",
     Authorization: "Basic " + Buffer.from(client_id + ":" + client_secret).toString("base64"),
@@ -27,7 +21,7 @@ async function refreshAccessToken() {
   access_token = response.data.access_token;
 }
 
-app.get("/now-playing", async (req, res) => {
+module.exports = async (req, res) => {
   try {
     if (!access_token) await refreshAccessToken();
 
@@ -41,7 +35,7 @@ app.get("/now-playing", async (req, res) => {
 
     const item = result.data.item;
     const title = item.name;
-    const artist = item.artists.map((_artist) => _artist.name).join(", ");
+    const artist = item.artists.map((a) => a.name).join(", ");
     const albumImageUrl = item.album.images[0].url;
 
     res.json({ isPlaying: true, title, artist, albumImageUrl });
@@ -49,6 +43,4 @@ app.get("/now-playing", async (req, res) => {
     access_token = "";
     res.status(500).json({ error: "Failed to fetch now playing", details: err.message });
   }
-});
-
-app.listen(PORT, () => console.log("Server running on port", PORT));
+};
